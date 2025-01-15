@@ -1,0 +1,25 @@
+{
+  "name": "desktop-lol-champion",
+  "title": "Desktop League of Legends Champion",
+  "version": "1.0.0",
+  "description": "Desktop League of Legends Champion (with Editor)",
+  "main": "app/main.js",
+  "keywords": [
+    "three.js",
+    "nw.js",
+    "league of legends"
+  ],
+  "author": "ssnangua",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssnangua/desktop-lol-champion.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ssnangua/desktop-lol-champion/issues"
+  },
+  "homepage": "https://github.com/ssnangua/desktop-lol-champion",
+  "dependencies": {
+    "three": "^0.172.0"
+  }
+}

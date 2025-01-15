@@ -1,0 +1,122 @@
+/* lil-gui */
+.lil-gui .controller.disabled,
+.lil-gui .controller.disabled * {
+  pointer-events: all !important;
+}
+.lil-gui .controller.disabled > .widget,
+.lil-gui .controller.disabled > .widget * {
+  pointer-events: none !important;
+}
+.lil-gui .controller.disabled {
+  opacity: 1;
+}
+.lil-gui .controller.disabled > .widget {
+  opacity: 0.5;
+}
+.lil-gui .controller > .widget {
+  overflow: hidden;
+}
+.lil-gui .controller > .widget .name {
+  padding: 0 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* animation group folder */
+.animation-group .title {
+  padding-left: 10px;
+}
+.animation-group .title[aria-expanded="true"] {
+  color: #e6a23c !important;
+}
+.animation-group.highlight .title {
+  /* color: #9370db !important; */
+  background-color: #313131;
+}
+.animation-group.enter > .title {
+  color: #409eff;
+}
+.animation-group.idle > .title {
+  color: #67c23a;
+}
+.animation-group > .title > span {
+  float: right;
+  color: #ebebeb;
+}
+.animation-group > .title > span > .tips {
+  padding: 0 2px;
+}
+.animation-group > .title > span > .tips:hover {
+  text-decoration: underline;
+  color: #e6a23c;
+}
+
+/* controller button */
+.controller {
+  position: relative;
+}
+.controller > .buttons {
+  display: none;
+  position: absolute;
+  right: 0;
+  padding: 0 4px;
+  background-color: #1f1f1f;
+}
+.controller:hover > .buttons {
+  display: flex;
+}
+.button {
+  min-width: 20px;
+}
+.button + .button {
+  margin-left: 4px;
+}
+.button.disabled,
+.button.disabled *,
+.buttons-disabled .button,
+.buttons-disabled .button * {
+  pointer-events: none !important;
+}
+.button.disabled,
+.buttons-disabled .button {
+  opacity: 0.5;
+}
+
+/* selected */
+.lil-gui .controller.selected > .widget {
+  --text-color: #e6a23c;
+}
+
+/* has voice */
+.has-voice > .widget::before {
+  content: "♪ ";
+  color: #67c23a;
+  position: absolute;
+  left: 5px;
+}
+.has-voice.voice-missing > .widget::before {
+  color: #f56c6c;
+}
+
+/* repeat count */
+.widget .name[data-repeat]::after {
+  content: attr(data-repeat);
+  color: #409eff;
+  position: absolute;
+  right: 5px;
+}
+
+/* added count */
+.widget .name[data-added-left]::before {
+  content: attr(data-added-left);
+  color: #67c23a;
+  position: absolute;
+  left: 5px;
+}
+.widget .name[data-added-right]::after {
+  content: attr(data-added-right);
+  color: #67c23a;
+  position: absolute;
+  right: 5px;
+}

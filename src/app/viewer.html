@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desktop League of Legends Champion</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0);
+        overflow: hidden;
+      }
+      body:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
+    </style>
+    <link rel="stylesheet" href="./utils/progress.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../node_modules/three/build/three.module.js",
+          "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+    <script>
+      // for (let key in require.cache) {
+      //   delete require.cache[key];
+      // }
+    </script>
+  </head>
+  <body>
+    <script type="module" src="./viewer.js"></script>
+  </body>
+</html>
