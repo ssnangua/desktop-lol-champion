@@ -65,6 +65,7 @@ function setModel({ animations: modelAnimations, meshes }, dataAnimations) {
       repeat: 1,
       time: 0,
       duration: 0,
+      pause: 0,
       voice: "",
       voice_delay: 0,
     };
