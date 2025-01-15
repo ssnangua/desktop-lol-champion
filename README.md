@@ -4,15 +4,15 @@ Display a **League of Legends** model on the screen.
 
 - With character **animations**
 - With character **voices**
-- With an **Editor**, you can extract the character model and voices of **League of Legends**, and then build your own model data. Please refer to the [wiki](./wiki) for details.
+- With an **Editor**, you can extract the character model and voices of **League of Legends**, and then build your own model data. Please refer to the [wiki](/wiki) for details.
 
 <img src="./preview.gif" width="300px">
 
 ## Development
 
-Get the sample character **model** and **voices** from [**Releases**](./releases).
+Get the sample character **model** and **voices** from [**Releases**](/releases).
 
-Or extract the character **model** and **voices** from **League of Legends** and generate the `.glb` file yourself. Please refer to the [**wiki**](./wiki) for details.
+Or extract the character **model** and **voices** from **League of Legends** and generate the `.glb` file yourself. Please refer to the [**wiki**](/wiki) for details.
 
 ```bash
 # install
