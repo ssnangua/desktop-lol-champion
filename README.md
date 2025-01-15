@@ -4,9 +4,15 @@ Display a **League of Legends** model on the screen.
 
 - With character **animations**
 - With character **voices**
-- With an **Editor**, you can extract the character model and voices of **League of Legends**, and then build your own model data. Please refer to the [**wiki**](https://github.com/ssnangua/desktop-lol-champion/wiki) for details.
+- With a model data **Editor**
 
-<img src="./preview.gif" width="300px">
+<img src="./preview.gif" width="300px" />
+
+## Editor
+
+You can extract the character model and voices of **League of Legends**, and then build your own model data. Please refer to the [**wiki**](https://github.com/ssnangua/desktop-lol-champion/wiki) for details.
+
+<img src="./Editor.jpg" width="600px" />
 
 ## Development
 
