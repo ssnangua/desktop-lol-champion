@@ -1,11 +1,11 @@
-const itemMap = {}; // { "itemName": MenuItem }
+const itemsMap = {}; // { "itemName": MenuItem }
 function createMenu(items, option = { type: "contextmenu" }) {
   const menu = new nw.Menu(option);
   items.forEach((item) => {
     const { name, ...option } = item;
     if (option.submenu) option.submenu = createMenu(option.submenu);
     const menuItem = new nw.MenuItem(option);
-    if (name) itemMap[name] = menuItem;
+    if (name) itemsMap[name] = menuItem;
     menu.append(menuItem);
   });
   return menu;
@@ -21,7 +21,7 @@ function getPercentItems(name, values) {
       enabled: value !== global.settings[name],
       click() {
         /* update global */ global.settings[name] = value;
-        itemMap[name].submenu.items.forEach((item) => {
+        itemsMap[name].submenu.items.forEach((item) => {
           item.checked = item.label === label;
           item.enabled = !item.checked;
         });
@@ -34,7 +34,7 @@ const devTools = [
   {
     label: "DevTools",
     click() {
-      nw.Window.get().showDevTools();
+      process.emit("show-devtools");
     },
   },
   {
@@ -57,8 +57,8 @@ const menu = createMenu([
     click() {
       const isHide = this.label === "Hide";
       this.label = isHide ? "Show" : "Hide";
-      itemMap.paused.enabled = !isHide;
-      itemMap.capture.enabled = !isHide;
+      itemsMap.paused.enabled = !isHide;
+      itemsMap.capture.enabled = !isHide;
       process.emit(isHide ? "hide-viewer" : "show-viewer");
     },
   },
@@ -74,8 +74,8 @@ const menu = createMenu([
     type: "checkbox",
     checked: global.settings.isMute,
     click() {
-      itemMap.volume.enabled = !this.checked;
-      itemMap.voice.enabled = !this.checked;
+      itemsMap.volume.enabled = !this.checked;
+      itemsMap.voice.enabled = !this.checked;
       /* update global */ global.settings.isMute = this.checked;
     },
   },
@@ -119,6 +119,12 @@ const menu = createMenu([
       process.emit("open-editor");
     },
   },
+  {
+    label: "Models Directory",
+    click() {
+      nw.Shell.openItem(global.dataDir);
+    },
+  },
   { type: "separator" },
   ...(process.versions["nw-flavor"] === "sdk" ? devTools : []),
   {
@@ -144,22 +150,16 @@ const menu = createMenu([
 
 function setEnabled(enabledMap) {
   Object.entries(enabledMap).forEach(([name, enabled]) => {
-    itemMap[name].enabled = enabled;
+    itemsMap[name].enabled = enabled;
   });
 }
 
-process.on("show-viewer", () => {
-  itemMap.viewer.label = "Hide";
-  itemMap.paused.enabled = true;
-  itemMap.capture.enabled = true;
-});
-
 process.on("paused-changed", (paused) => {
-  itemMap.paused.checked = paused;
+  itemsMap.paused.checked = paused;
 });
 
 process.on("open-editor", () => {
-  itemMap.viewer.label = "Show";
+  itemsMap.viewer.label = "Show";
   setEnabled({
     viewer: false,
     model: false,
@@ -173,7 +173,7 @@ process.on("open-editor", () => {
 });
 
 process.on("close-editor", () => {
-  itemMap.viewer.label = "Hide";
+  itemsMap.viewer.label = "Hide";
   setEnabled({
     viewer: true,
     model: true,
@@ -187,7 +187,7 @@ process.on("close-editor", () => {
 });
 
 process.on("model-list-changed", (modelList) => {
-  const menu = itemMap.model.submenu;
+  const menu = itemsMap.model.submenu;
   while (menu.items.length > 0) menu.removeAt(0);
   modelList.forEach((model) => {
     const menuItem = new nw.MenuItem({
@@ -196,7 +196,7 @@ process.on("model-list-changed", (modelList) => {
       checked: model === global.settings.model,
       enabled: model !== global.settings.model,
       click() {
-        itemMap.model.submenu.items.forEach((item) => {
+        itemsMap.model.submenu.items.forEach((item) => {
           item.checked = item.label === model;
           item.enabled = !item.checked;
         });
@@ -206,5 +206,7 @@ process.on("model-list-changed", (modelList) => {
     menu.append(menuItem);
   });
 });
+
+menu.itemsMap = itemsMap;
 
 module.exports = menu;

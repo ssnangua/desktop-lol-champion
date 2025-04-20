@@ -40,9 +40,12 @@ function openWindow(name, { onOpen, onClose } = {}) {
     nw.Window.open(url, options, (win) => {
       wins[name] = win;
       if (onOpen) onOpen(win);
+      let closing = false;
       win.on("close", () => {
-        win.close(true);
+        if (closing) return;
+        closing = true;
         if (onClose) onClose(win);
+        win.close(true);
         delete wins[name];
       });
     });
@@ -52,6 +55,9 @@ function openWindow(name, { onOpen, onClose } = {}) {
 function openViewer() {
   openWindow("viewer");
 }
+function closeViewer() {
+  wins.viewer.close();
+}
 function showViewer() {
   wins.viewer.show();
 }
@@ -60,17 +66,22 @@ function hideViewer() {
 }
 
 function openEditor() {
-  hideViewer();
   openWindow("editor", {
     onClose: () => {
+      openViewer();
       process.emit("close-editor");
-      showViewer();
     },
   });
 }
 
 process.on("show-viewer", showViewer);
 process.on("hide-viewer", hideViewer);
-process.on("open-editor", openEditor);
+process.on("open-editor", () => {
+  openEditor();
+  closeViewer();
+});
+process.on("show-devtools", () => {
+  wins[wins.viewer ? "viewer" : "editor"].showDevTools();
+});
 
 openViewer();

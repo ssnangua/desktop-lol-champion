@@ -14,10 +14,11 @@ const root = {
   "name": "",
   "resource": "",
   "Save Data"() {
-    emitter.emit(
-      "save-data",
-      groups.filter((group) => group.length > 0)
-    );
+    emitter.emit("save-data", {
+      enter: groups[0],
+      idle: groups[1],
+      groups: groups.slice(2).filter((group) => group.length > 0),
+    });
   },
 };
 Data.add(root, "name").listen().disable();
@@ -80,6 +81,8 @@ function setModelData(modelData) {
     openedGroupFolder = folder;
     updateOperationsControllers();
   });
+  newGroup(modelData.enter);
+  newGroup(modelData.idle);
   modelData.groups.forEach(newGroup);
   // enter and idle group folders
   enterGroupFolder = inbuildGroup(GroupsFolder.folders[0], {

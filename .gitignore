@@ -3,5 +3,6 @@ node_modules
 /cache
 /out
 /assets
-/models/Zoe
+/models
+!/models/README.md
 settings.json

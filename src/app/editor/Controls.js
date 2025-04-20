@@ -82,6 +82,7 @@ function getMeshesValue() {
 /**********************************************/
 
 const stats = {
+  Mirror: false,
   Scale: 1,
   X: 0,
   Y: 0,
@@ -90,7 +91,7 @@ const stats = {
   RotationY: 0,
   RotationZ: 0,
   Reset() {
-    const stats = { scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] };
+    const stats = { mirror: false, scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] };
     setStatsValue(stats);
     emitter.emit("stats-changed", stats);
   },
@@ -103,11 +104,12 @@ for (let property in stats) {
 }
 
 function getStatsValue() {
-  const { Scale, X, Y, Z, RotationX, RotationY, RotationZ } = stats;
-  return { scale: Scale, position: [X, Y, Z], rotation: [RotationX, RotationY, RotationZ] };
+  const { Mirror, Scale, X, Y, Z, RotationX, RotationY, RotationZ } = stats;
+  return { mirror: Mirror, scale: Scale, position: [X, Y, Z], rotation: [RotationX, RotationY, RotationZ] };
 }
 
-function setStatsValue({ scale, position, rotation }) {
+function setStatsValue({ mirror, scale, position, rotation }) {
+  stats.Mirror = !!mirror;
   stats.Scale = scale;
   [stats.X, stats.Y, stats.Z] = position;
   [stats.RotationX, stats.RotationY, stats.RotationZ] = rotation;
@@ -166,29 +168,38 @@ const voice = {
   "Path": "", // not show, just cache
   "Voice": "",
   "Delay (s)": 0,
+  "Force": false,
+  "Repeat": true,
   "Clear"() {
     emitter.emit("clear-voice", voice.Path);
-    setVoiceValue({ voice: "", voice_delay: 0 });
+    setVoiceValue({ voice: "", voice_delay: 0, voice_force: false, voice_repeat: false });
   },
 };
 const VoiceFolder = Controls.addFolder("Animation Voice");
 const VoiceController = VoiceFolder.add(voice, "Voice").listen().disable();
 const DelayController = VoiceFolder.add(voice, "Delay (s)").listen().disable();
+const ForceController = VoiceFolder.add(voice, "Force").listen().disable();
+const VRepeatController = VoiceFolder.add(voice, "Repeat").listen().disable();
 const ClearVoiceController = VoiceFolder.add(voice, "Clear").disable();
 
-function setVoiceValue({ voice: voicePath, voice_delay }) {
+function setVoiceValue({ voice: voicePath, voice_delay, voice_force, voice_repeat }) {
   Object.assign(voice, {
     "Path": voicePath,
     "Voice": path.basename(voicePath),
     "Delay (s)": voice_delay,
+    "Force": voice_force,
+    "Repeat": voice_repeat,
   });
 
-  DelayController[voicePath ? "enable" : "disable"]();
-  ClearVoiceController[voicePath ? "enable" : "disable"]();
+  const enabled = voicePath ? "enable" : "disable";
+  DelayController[enabled]();
+  ForceController[enabled]();
+  VRepeatController[enabled]();
+  ClearVoiceController[enabled]();
 }
 
 function getVoiceValue() {
-  return { voice: voice.Path, voice_delay: voice["Delay (s)"] };
+  return { voice: voice.Path, voice_delay: voice["Delay (s)"], voice_force: voice.Force, voice_repeat: voice.Repeat };
 }
 
 /**********************************************/
@@ -239,19 +250,22 @@ function reset() {
 
 function resetValues() {
   // Stats
-  setStatsValue({ scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] });
+  setStatsValue({ mirror: false, scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] });
   // Voice
-  setVoiceValue({ voice: "", voice_delay: 0 });
+  setVoiceValue({ voice: "", voice_delay: 0, voice_force: false, voice_repeat: false });
   // Other Settings
   setOtherValue({ repeat: 1, time: 0, duration: 0, pause: 0 }, 0);
 }
 
 function applyAnimationData(animation, anmDuration) {
   if (animation) {
-    const { meshes, scale, position, rotation, repeat, time, duration, pause, voice, voice_delay } = animation;
+    const { meshes } = animation;
+    const { mirror, scale, position, rotation } = animation;
+    const { voice, voice_delay, voice_force, voice_repeat } = animation;
+    const { repeat, time, duration, pause } = animation;
     setMeshesValue(meshes);
-    setStatsValue({ scale, position, rotation });
-    setVoiceValue({ voice, voice_delay });
+    setStatsValue({ mirror, scale, position, rotation });
+    setVoiceValue({ voice, voice_delay, voice_force, voice_repeat });
     setOtherValue({ repeat, time, duration, pause }, anmDuration);
   } else {
     resetValues();

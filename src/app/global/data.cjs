@@ -11,7 +11,9 @@ function getEmptyData(resource) {
     resource: path.resolve(resource),
     animations: [],
     voices: [],
-    groups: [[], []], // [enterGroup, idleGroup]
+    enter: [],
+    idle: [],
+    groups: [],
   };
 }
 
@@ -24,12 +26,15 @@ function readDataFile(dataFilePath) {
   try {
     let data = JSON.parse(fs.readFileSync(dataFilePath, "utf8"));
     if (data.resource && fs.existsSync(data.resource)) {
+      const anmVoice = (animation) => relativeToAbsolute(animation, "voice");
       data = {
         name: data.name,
         resource: path.resolve(data.resource),
-        animations: data.animations.map((animation) => relativeToAbsolute(animation, "voice")),
+        animations: data.animations.map(anmVoice),
         voices: data.voices.map((voice) => path.resolve(voice)),
-        groups: data.groups.map((group) => group.map((animation) => relativeToAbsolute(animation, "voice"))),
+        enter: data.enter.map(anmVoice),
+        idle: data.idle.map(anmVoice),
+        groups: data.groups.map((group) => group.map(anmVoice)),
       };
       return data;
     }
@@ -46,12 +51,15 @@ function absoluteToRelative(obj, key) {
 
 function writeDataFile(dataFilePath, data) {
   try {
+    const anmVoice = (animation) => absoluteToRelative(animation, "voice");
     data = {
       name: data.name,
       resource: path.relative("./", data.resource),
-      animations: clone(data.animations).map((animation) => absoluteToRelative(animation, "voice")),
+      animations: clone(data.animations).map(anmVoice),
       voices: data.voices.map((voice) => path.relative("./", voice)),
-      groups: clone(data.groups).map((group) => group.map((animation) => absoluteToRelative(animation, "voice"))),
+      enter: clone(data.enter).map(anmVoice),
+      idle: clone(data.idle).map(anmVoice),
+      groups: clone(data.groups).map((group) => group.map(anmVoice)),
     };
     fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
   } catch (error) {

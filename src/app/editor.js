@@ -80,15 +80,6 @@ function stopAnimation() {
   model.stopAnimation();
 }
 
-let voiceTimer = -1;
-function playVoice(voicePath, delay = 0) {
-  clearTimeout(voiceTimer);
-  voiceTimer = setTimeout(() => {
-    audio.play(voicePath);
-    progress.show({ fixed: true, text: "Loading..." });
-  }, delay * 1000);
-}
-
 function stopVoice() {
   audio.stop();
 }
@@ -96,14 +87,15 @@ function stopVoice() {
 function playAnimationWithVoice(animation) {
   playAnimation(animation);
 
-  const hasVoice = animation.voice && fs.existsSync(animation.voice);
+  const { voice, voice_delay, voice_force, voice_repeat } = animation;
 
   if (curAnimationGroup) {
     // if playing animation group, don't interrupt playback of voice
-    if ((curAnimationGroupIndex === 0 || !audio.isPlaying) && hasVoice)
-      playVoice(animation.voice, animation.voice_delay);
+    if ((curAnimationGroupIndex === 0 || !audio.isPlaying || voice_force) && voice) {
+      audio.play(voice, voice_delay, voice_repeat);
+    }
   } else {
-    if (hasVoice) playVoice(animation.voice, animation.voice_delay);
+    if (voice) audio.play(voice, voice_delay, voice_repeat);
     else if (animation.repeat !== Infinity) stopVoice();
   }
 }
@@ -118,6 +110,7 @@ function getPlayingProgress() {
   if (model.isPlaying) {
     if (curAnimationGroup) return model.getTime(); // playing animation group
     if (!model.isLoopRepeat) return model.getTime(); // playing from Data panel
+    if (audio.path === curAnimation.voice) return model.getTime(); // playing animation audio
     if (!audio.isPlaying) return model.getTime(); // no voice playing
   }
   if (audio.isPlaying) return audio.getTime();
@@ -129,7 +122,12 @@ model.emitter.on("started", (animation) => {
   gui.Data.onAnimationStarted(animation);
 });
 
-model.emitter.on("ended", async () => {
+model.emitter.on("loop", () => {
+  const { voice, voice_delay, voice_repeat } = curAnimation;
+  if (voice && (!audio.path || audio.path === voice)) audio.play(voice, voice_delay, voice_repeat);
+});
+
+model.emitter.on("finished", async () => {
   await wait(curAnimation.pause * 1000);
   curAnimation = null;
 
@@ -230,6 +228,8 @@ gui.Model.emitter.on("model-changed", (modelName) => {
 
 gui.Model.emitter.on("play-animation", (animation) => {
   curAnimationGroup = null;
+  stopAnimation();
+  stopVoice();
   playAnimationWithVoice({ ...animation, repeat: Infinity, time: 0, duration: 0 });
   gui.Voices.setAddButtonsEnable(true);
   gui.Controls.applyAnimationData(animation, anmDurationMap[animation.name]);
@@ -247,7 +247,7 @@ gui.Model.emitter.on("add-animation", (animation) => {
 /**********************************************/
 
 gui.Voices.emitter.on("play-voice", (voicePath) => {
-  playVoice(voicePath, 0);
+  audio.play(voicePath, 0, false);
 });
 
 gui.Voices.emitter.on("set-voice", (voicePath) => {
@@ -264,7 +264,7 @@ gui.Voices.emitter.on("set-voice", (voicePath) => {
     animation.voice = voicePath;
     gui.Data.updateAnimationVoiceStyle();
   }
-  gui.Controls.setVoiceValue({ voice: voicePath, voice_delay: 0 });
+  gui.Controls.setVoiceValue({ voice: voicePath, voice_delay: 0, voice_force: false, voice_repeat: false });
 });
 
 gui.Voices.emitter.on("resources-changed", () => {
@@ -300,16 +300,36 @@ gui.Data.emitter.on("delete-animation", (animation) => {
   }
 });
 
-gui.Data.emitter.on("save-data", (groups) => {
+// function fix(group) {
+//   group.forEach((anm) => {
+//     if (typeof anm.mirror !== "boolean") anm.mirror = false;
+//     if (typeof anm.voice_force !== "boolean") anm.voice_force = false;
+//     if (typeof anm.voice_repeat !== "boolean") anm.voice_repeat = false;
+//   });
+// }
+
+gui.Data.emitter.on("save-data", ({ enter, idle, groups }) => {
+  const animations = gui.Model.getAnimations();
+  const voices = gui.Voices.getVoices();
+
+  /* fix */
+  // fix(animations);
+  // fix(enter);
+  // fix(idle);
+  // groups.forEach(fix);
+
   /* update global */
   const data = Object.assign(
     modelData,
     clone({
-      animations: gui.Model.getAnimations(),
-      voices: gui.Voices.getVoices(),
+      animations,
+      voices,
+      enter,
+      idle,
       groups,
     })
   );
+
   // write data file
   const dataFilePath = path.resolve(path.dirname(data.resource), `${data.name}.json`);
   writeDataFile(dataFilePath, data);
@@ -349,7 +369,8 @@ gui.Controls.emitter.on("stats-changed", (stats) => {
   helper.gridY = model.shadowY;
   const animation = getCurAnimation();
   if (animation) {
-    const { scale, position, rotation } = stats;
+    const { mirror, scale, position, rotation } = stats;
+    animation.mirror = mirror;
     animation.scale = scale;
     animation.position = position;
     animation.rotation = rotation;
@@ -365,11 +386,13 @@ gui.Controls.emitter.on("other-changed", ({ repeat, time, duration, pause }) => 
   }
 });
 
-gui.Controls.emitter.on("voice-changed", ({ voice, voice_delay }) => {
+gui.Controls.emitter.on("voice-changed", ({ voice, voice_delay, voice_force, voice_repeat }) => {
   const animation = getCurAnimation();
   if (animation) {
     animation.voice = voice;
     animation.voice_delay = voice_delay;
+    animation.voice_force = voice_force;
+    animation.voice_repeat = voice_repeat;
   }
 });
 
@@ -403,7 +426,7 @@ function render() {
     const { time: value, duration: max } = getPlayingProgress();
     const text = `Duration: ${max.toFixed(3)}s`;
     if (max) progress.update({ fixed: true, max, value, text });
-    else progress.hide();
+    else if (!model.isLoopRepeat) progress.hide();
   }
 }
 render();

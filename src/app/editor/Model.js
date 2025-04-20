@@ -28,7 +28,6 @@ function openModel(file) {
   // auto load data file if exists
   const dataFile = path.resolve(dir, `${name}.json`);
   if (fs.existsSync(dataFile)) {
-    console.log(readDataFile(dataFile))
     Object.assign(data, readDataFile(dataFile));
   }
   // load model

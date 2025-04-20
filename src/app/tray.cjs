@@ -8,5 +8,5 @@ const tray = new nw.Tray({
   menu,
 });
 tray.on("click", () => {
-  process.emit("show-viewer");
+  menu.itemsMap["viewer"].click();
 });

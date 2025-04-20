@@ -24,7 +24,7 @@ win.moveTo(x, y);
 
 let dataList;
 let modelData, modelSize;
-let enterGroup, idleGroup, isEnterAnimation;
+let isEnterAnimation;
 let curAnimationGroup, curAnimationGroupIndex, curAnimation;
 
 function loadModelByName(modelName) {
@@ -39,8 +39,6 @@ function loadModel(data) {
   stopVoice();
 
   modelData = data;
-  enterGroup = data.groups[0];
-  idleGroup = data.groups[1];
   curAnimationGroup = curAnimationGroupIndex = curAnimation = null;
   modelSize = fs.statSync(data.resource).size;
   progress.show({ modal: false, text: "Loading..." });
@@ -55,7 +53,7 @@ model.emitter.on("progress", ({ loaded }) => {
 model.emitter.on("loaded", () => {
   progress.hide();
   isEnterAnimation = true;
-  playAnimationGroup(enterGroup);
+  playAnimationGroup(modelData.enter);
   isEnterAnimation = false;
 });
 
@@ -80,14 +78,10 @@ function stopAnimation() {
   model.stopAnimation();
 }
 
-let voiceTimer = -1;
-function playVoice(voicePath, delay = 0) {
+function playVoice(voicePath, delay, force, repeat) {
   if (global.settings.isMute) return;
-  if (isEnterAnimation || Math.random() <= global.settings.voice) {
-    clearTimeout(voiceTimer);
-    voiceTimer = setTimeout(() => {
-      audio.play(voicePath);
-    }, delay * 1000);
+  if (isEnterAnimation || force || Math.random() <= global.settings.voice) {
+    audio.play(voicePath, delay, repeat);
   }
 }
 
@@ -98,32 +92,34 @@ function stopVoice() {
 function playAnimationWithVoice(animation) {
   playAnimation(animation);
 
-  if (!audio.isPlaying) {
-    if (animation.voice) {
-      playVoice(animation.voice, animation.voice_delay);
+  const { voice, voice_delay, voice_force, voice_repeat } = animation;
+  if (!audio.isPlaying || voice_force) {
+    if (voice) {
+      playVoice(voice, voice_delay, voice_force, voice_repeat);
     } else if (modelData.voices.length > 0) {
       const voice = modelData.voices[Math.floor(Math.random() * modelData.voices.length)];
-      playVoice(voice, 0);
+      playVoice(voice, 0, false, false);
     }
   }
 }
 
 function playAnimationGroup(group) {
-  if (group.length === 0) playAnimationGroup(randomGroup());
+  if (group.length === 0) return playAnimationGroup(randomGroup());
   curAnimationGroup = group;
   curAnimationGroupIndex = 0;
   playAnimationWithVoice(group[curAnimationGroupIndex]);
 }
 
 function randomGroup() {
-  if (Math.random() < 0.3) {
-    const randomIdle = idleGroup[Math.floor(Math.random() * idleGroup.length)];
+  const { idle, groups } = modelData;
+  if (idle.length > 0 && Math.random() < 0.3) {
+    const randomIdle = idle[Math.floor(Math.random() * idle.length)];
     return [randomIdle];
   }
-  return modelData.groups[Math.floor(Math.random() * modelData.groups.length)];
+  return groups[Math.floor(Math.random() * groups.length)];
 }
 
-model.emitter.on("ended", async () => {
+model.emitter.on("finished", async () => {
   await wait(curAnimation.pause * 1000);
   curAnimation = null;
 
@@ -143,10 +139,14 @@ process.on("setting-changed", (prop, value) => {
 /*                 render loop                */
 /**********************************************/
 
+let requestID;
 function render() {
-  requestAnimationFrame(render);
+  requestID = requestAnimationFrame(render);
   model.update();
   scene.update();
+}
+function stopRender() {
+  cancelAnimationFrame(requestID);
 }
 render();
 
@@ -160,6 +160,18 @@ window.addEventListener("contextmenu", (e) => {
 });
 
 process.on("model-changed", loadModelByName);
+
+function onHide() {
+  stopAnimation();
+  stopVoice();
+  stopRender();
+}
+function onShow() {
+  render();
+  playAnimationGroup(curAnimationGroup);
+}
+process.on("hide-viewer", onHide);
+process.on("show-viewer", onShow);
 
 /**********************************************/
 /*                  draggable                 */
@@ -186,6 +198,7 @@ document.body.addEventListener("mousedown", onMouseDown);
 
 function togglePaused() {
   const paused = model.togglePaused();
+  audio[paused ? "pause" : "resume"]();
   process.emit("paused-changed", paused);
 }
 process.on("toggle-paused", togglePaused);
@@ -225,5 +238,4 @@ function init() {
     dataList.map((model) => model.name)
   );
 }
-process.on("close-editor", init);
 init();

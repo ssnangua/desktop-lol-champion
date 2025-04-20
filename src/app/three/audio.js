@@ -18,10 +18,20 @@ process.on("setting-changed", (prop, value) => {
   if (prop === "volume") audio.setVolume(value);
 });
 
-let audioPath;
+let audioPath, audioDelay, audioRepeat;
+let timer;
+function play() {
+  audio.stop();
+  clearTimeout(timer);
+  timer = setTimeout(() => audio.play(), audioDelay * 1000);
+}
 audio.onEnded = () => {
-  emitter.emit("ended", audioPath);
-  audioPath = null;
+  if (audioRepeat) {
+    play();
+  } else {
+    emitter.emit("ended", audioPath);
+    audioPath = null;
+  }
 };
 
 const audioLoader = new THREE.AudioLoader();
@@ -30,7 +40,7 @@ function onProgress({ loaded, total }) {}
 
 function onLoad(buffer) {
   audio.setBuffer(buffer);
-  audio.play();
+  play();
   emitter.emit("started", audioPath);
 }
 
@@ -41,14 +51,25 @@ function onError(error) {
 
 export default {
   emitter,
+  get path() {
+    return audioPath;
+  },
   get isPlaying() {
     return !!audioPath;
   },
-  play(path) {
+  play(path, delay = 0, repeat = false) {
     this.stop();
     audioPath = path;
+    audioDelay = delay;
+    audioRepeat = repeat;
     audioLoader.load(pathToURL(path), onLoad, onProgress, onError);
     return audio;
+  },
+  pause() {
+    if (audioPath) audio.pause();
+  },
+  resume() {
+    if (audioPath) audio.play();
   },
   stop() {
     audio.stop();
@@ -56,8 +77,6 @@ export default {
     audioPath = null;
   },
   getTime() {
-    return audio.buffer
-      ? { duration: audio.buffer.duration, time: audio.context.currentTime - audio._startedAt }
-      : { duration: 0, time: 0 };
+    return audio.buffer ? { duration: audio.buffer.duration, time: audio.context.currentTime - audio._startedAt } : { duration: 0, time: 0 };
   },
 };

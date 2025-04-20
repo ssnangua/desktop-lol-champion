@@ -68,7 +68,7 @@ function onLoad(gltf) {
   model.scene.position.y += model.scene.position.y - center.y;
   // model.scene.position.z += model.scene.position.z - center.z;
 
-  setStats({ scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] });
+  setStats({ mirror: false, scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] });
 
   // add to model container
   while (modelBox.children.length > 0) modelBox.remove(modelBox.children[0]);
@@ -80,10 +80,13 @@ function onLoad(gltf) {
     mixer.clipAction(animation);
     return { name: animation.name, duration: animation.duration };
   });
+  mixer.addEventListener("loop", (e) => {
+    emitter.emit("loop", playingAnimation);
+  });
   mixer.addEventListener("finished", (e) => {
     const animation = playingAnimation;
     playingAnimation = playingAction = null;
-    emitter.emit("ended", animation);
+    emitter.emit("finished", animation);
   });
 
   emitter.emit("loaded", { meshes, animations });
@@ -106,10 +109,10 @@ function setMeshes(names) {
 }
 
 // set model stats
-function setStats({ scale, position, rotation }) {
+function setStats({ mirror, scale, position, rotation }) {
   // equal scaling
   const s = scale * nScale;
-  modelBox.scale.set(s, s, s);
+  modelBox.scale.set(s * (mirror ? -1 : 1), s, s);
   // position
   const [x, y, z] = position;
   modelBox.position.set(x * nScale, y * nScale, z * nScale);
@@ -118,7 +121,8 @@ function setStats({ scale, position, rotation }) {
   const a2r = Math.PI / 180;
   modelBox.rotation.set(rx * a2r, ry * a2r, rz * a2r);
   // shadow position
-  shadow.position.set(0, -0.5 * scale, 0);
+  // shadow.position.set(0, 0.5 * scale, 0); // fixed position
+  shadow.position.set(0, y * nScale - 0.5 * scale, 0); // follow the model
 }
 
 function setScale(scale) {
@@ -136,13 +140,14 @@ function playAnimation(animation) {
   const clip = model.animations.find((animation) => animation.name === name);
   mixer.stopAllAction();
   const action = mixer.clipAction(clip);
+  action.reset();
   action.setLoop(THREE.LoopRepeat, repeat || Infinity);
   if (duration === 0 || duration > clip.duration) duration = clip.duration;
   if (time > duration) time = 0;
   action.clampWhenFinished = true;
   action.time = time;
   action.setDuration(clip.duration - action.time);
-  action.reset().play();
+  action.play();
   playingAnimation = animation;
   playingAction = action;
   emitter.emit("started", playingAnimation);
