@@ -95,7 +95,9 @@ function playAnimationWithVoice(animation) {
   const { voice, voice_delay, voice_force, voice_repeat } = animation;
   if (!audio.isPlaying || voice_force) {
     if (voice) {
-      playVoice(voice, voice_delay, voice_force, voice_repeat);
+      if (!voice_force || voice !== audio.path) {
+        playVoice(voice, voice_delay, voice_force, voice_repeat);
+      }
     } else if (modelData.voices.length > 0) {
       const voice = modelData.voices[Math.floor(Math.random() * modelData.voices.length)];
       playVoice(voice, 0, false, false);

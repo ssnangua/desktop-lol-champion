@@ -91,7 +91,7 @@ function playAnimationWithVoice(animation) {
 
   if (curAnimationGroup) {
     // if playing animation group, don't interrupt playback of voice
-    if ((curAnimationGroupIndex === 0 || !audio.isPlaying || voice_force) && voice) {
+    if (voice && (curAnimationGroupIndex === 0 || !audio.isPlaying || voice_force)) {
       audio.play(voice, voice_delay, voice_repeat);
     }
   } else {
@@ -123,8 +123,10 @@ model.emitter.on("started", (animation) => {
 });
 
 model.emitter.on("loop", () => {
-  const { voice, voice_delay, voice_repeat } = curAnimation;
-  if (voice && (!audio.path || audio.path === voice)) audio.play(voice, voice_delay, voice_repeat);
+  const { voice, voice_delay, voice_force, voice_repeat } = curAnimation;
+  if (voice && (!audio.isPlaying || audio.path === voice && !voice_repeat)) {
+    audio.play(voice, voice_delay, voice_repeat);
+  }
 });
 
 model.emitter.on("finished", async () => {
@@ -396,18 +398,22 @@ gui.Controls.emitter.on("voice-changed", ({ voice, voice_delay, voice_force, voi
   }
 });
 
+function resetAnmVoice(anm) {
+    anm.voice = "";
+    anm.voice_delay = 0;
+    anm.voice_force = false;
+    anm.voice_repeat = false;
+}
 gui.Controls.emitter.on("clear-voice", () => {
   const animation = getCurAnimation();
   if (gui.Model.selectedAnimation) {
     gui.Voices.setVoiceAddedCount("Model", animation.voice, -1);
-    animation.voice = "";
-    animation.voice_delay = 0;
+    resetAnmVoice(animation);
     gui.Model.updateAnimationVoiceStyle();
   }
   if (gui.Data.selectedAnimation) {
     gui.Voices.setVoiceAddedCount("Data", animation.voice, -1);
-    animation.voice = "";
-    animation.voice_delay = 0;
+    resetAnmVoice(animation);
     gui.Data.updateAnimationVoiceStyle();
   }
 });

@@ -174,6 +174,7 @@ process.on("open-editor", () => {
 
 process.on("close-editor", () => {
   itemsMap.viewer.label = "Hide";
+  itemsMap.paused.checked = false;
   setEnabled({
     viewer: true,
     model: true,

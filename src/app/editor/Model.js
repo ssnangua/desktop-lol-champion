@@ -87,7 +87,7 @@ function setModel({ animations: modelAnimations, meshes }, dataAnimations) {
     controller.addButton("+", () => emitter.emit("add-animation", clone(animation)));
     AnimationControllerMap[name] = controller;
     animationAddedMap[name] = 0;
-    setAnimationVoiceStyle(controller, !!animation.voice);
+    setAnimationHasVoiceStyle(controller, !!animation.voice);
     setAnimationRepeatStyle(controller, animation.repeat);
   });
 }
@@ -103,8 +103,11 @@ function setSelectedAnimation(animation) {
   }
 }
 
-function setAnimationVoiceStyle(controller, hasVoice) {
+function setAnimationHasVoiceStyle(controller, hasVoice) {
   controller.domElement.classList.toggle("has-voice", hasVoice);
+}
+function setAnimationVoiceMissingStyle(controller, isMissing) {
+  controller.domElement.classList.toggle("voice-missing", isMissing);
 }
 
 function setAnimationRepeatStyle(controller, repeat) {
@@ -166,7 +169,8 @@ export default {
     return selectedAnimation;
   },
   updateAnimationVoiceStyle() {
-    setAnimationVoiceStyle(selectedAnimationController, !!selectedAnimation.voice);
+    setAnimationHasVoiceStyle(selectedAnimationController, !!selectedAnimation.voice);
+    setAnimationVoiceMissingStyle(selectedAnimationController, false);
   },
   updateAnimationRepeatStyle() {
     setAnimationRepeatStyle(selectedAnimationController, selectedAnimation.repeat);

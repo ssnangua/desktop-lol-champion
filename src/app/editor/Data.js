@@ -196,7 +196,7 @@ function addAnimation(animation) {
     emitter.emit("delete-animation", animation);
   });
 
-  setAnimationVoiceStyle(controller, !!animation.voice);
+  setAnimationHasVoiceStyle(controller, !!animation.voice);
   setAnimationRepeatStyle(controller, animation.repeat);
   updateMoveButtons();
   updateGroupFolderTitle(openedGroupFolder);
@@ -237,8 +237,11 @@ function setSelectedAnimation(animation) {
   }
 }
 
-function setAnimationVoiceStyle(controller, hasVoice) {
+function setAnimationHasVoiceStyle(controller, hasVoice) {
   controller.domElement.classList.toggle("has-voice", hasVoice);
+}
+function setAnimationVoiceMissingStyle(controller, isMissing) {
+  controller.domElement.classList.toggle("voice-missing", isMissing);
 }
 
 function setAnimationRepeatStyle(controller, repeat) {
@@ -324,7 +327,8 @@ export default {
     return selectedAnimation;
   },
   updateAnimationVoiceStyle() {
-    setAnimationVoiceStyle(selectedAnimationController, !!selectedAnimation.voice);
+    setAnimationHasVoiceStyle(selectedAnimationController, !!selectedAnimation.voice);
+    setAnimationVoiceMissingStyle(selectedAnimationController, false);
   },
   updateAnimationRepeatStyle() {
     setAnimationRepeatStyle(selectedAnimationController, selectedAnimation.repeat);
