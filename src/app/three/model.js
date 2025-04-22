@@ -29,14 +29,14 @@ const clock = new THREE.Clock();
 const loader = new GLTFLoader();
 
 // model
-let model, meshes, animations;
-let material_mesh;
+let model;
+let meshesMap; // { [mesh.material.name]: mesh }
+let animationsMap; // { [animation.name]: animation }
 let nScale;
 let mixer;
-let playingAnimation, playingAction;
+let playingAnimation, playingClip, playingAction;
 
 // load model
-
 function load(resource) {
   if (model) {
     mixer.stopAllAction();
@@ -47,15 +47,14 @@ function load(resource) {
 
 function onLoad(gltf) {
   model = gltf;
+  meshesMap = {};
+  animationsMap = {};
 
   // meshes
-  meshes = [];
-  material_mesh = {};
   model.scene.traverse((child) => {
     if (child instanceof THREE.SkinnedMesh) {
       child.castShadow = true;
-      material_mesh[child.material.name] = child.name;
-      meshes.push(child.material.name);
+      meshesMap[child.material.name] = child;
     }
   });
 
@@ -68,7 +67,7 @@ function onLoad(gltf) {
   model.scene.position.y += model.scene.position.y - center.y;
   // model.scene.position.z += model.scene.position.z - center.z;
 
-  setStats({ mirror: false, scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] });
+  setStats({});
 
   // add to model container
   while (modelBox.children.length > 0) modelBox.remove(modelBox.children[0]);
@@ -76,20 +75,27 @@ function onLoad(gltf) {
 
   // animations
   mixer = new THREE.AnimationMixer(model.scene);
-  animations = model.animations.map((animation) => {
-    mixer.clipAction(animation);
-    return { name: animation.name, duration: animation.duration };
+  model.animations.forEach((animation) => {
+    animationsMap[animation.name] = animation;
   });
-  mixer.addEventListener("loop", (e) => {
-    emitter.emit("loop", playingAnimation);
-  });
+  // mixer.addEventListener("loop", (e) => {
+  //   emitter.emit("loop", playingAnimation);
+  // });
   mixer.addEventListener("finished", (e) => {
     const animation = playingAnimation;
-    playingAnimation = playingAction = null;
-    emitter.emit("finished", animation);
+    if (_isInfinity) {
+      playAnimation(animation, _isInfinity);
+      emitter.emit("loop", animation);
+    } else {
+      playingAnimation = playingClip = playingAction = null;
+      emitter.emit("finished", animation);
+    }
   });
 
-  emitter.emit("loaded", { meshes, animations });
+  emitter.emit("loaded", {
+    meshes: Object.keys(meshesMap),
+    animations: Object.keys(animationsMap),
+  });
 }
 
 function onProgress({ loaded, total }) {
@@ -102,17 +108,16 @@ function onError(error) {
 
 // set meshes visible
 function setMeshes(names) {
-  meshes.forEach((mesh) => {
-    const meshObject = scene.scene.getObjectByName(material_mesh[mesh]);
-    meshObject.visible = !names || names.length === 0 || names.includes(mesh);
+  Object.keys(meshesMap).forEach((mesh) => {
+    meshesMap[mesh].visible = !names || names.length === 0 || names.includes(mesh);
   });
 }
 
 // set model stats
-function setStats({ mirror, scale, position, rotation }) {
+function setStats({ is_mirror = false, scale = 1, position = [0, 0, 0], rotation = [0, 0, 0] }) {
   // equal scaling
   const s = scale * nScale;
-  modelBox.scale.set(s * (mirror ? -1 : 1), s, s);
+  modelBox.scale.set(s * (is_mirror ? -1 : 1), s, s);
   // position
   const [x, y, z] = position;
   modelBox.position.set(x * nScale, y * nScale, z * nScale);
@@ -134,43 +139,54 @@ function setScale(scale) {
 }
 
 // play animation
-function playAnimation(animation) {
+let _isInfinity = false;
+function playAnimation(animation, isInfinity) {
   stopAnimation();
-  let { name, time, duration, repeat } = animation;
-  const clip = model.animations.find((animation) => animation.name === name);
-  mixer.stopAllAction();
-  const action = mixer.clipAction(clip);
+
+  let { delay = 0, start_time = 0, end_time = 0, time_scale = 1, repeat = 1 } = animation.action;
+  _isInfinity = isInfinity;
+
+  const clip = model.animations.find((clip) => clip.name === animation.name);
+  if (end_time === 0 || end_time > clip.duration) end_time = clip.duration; // end time
+  if (start_time > end_time) start_time = 0; // start time
+  const subclip = THREE.AnimationUtils.subclip(clip, `${animation.name}_sub`, start_time, end_time, true); // duration
+
+  const action = mixer.clipAction(subclip);
   action.reset();
-  action.setLoop(THREE.LoopRepeat, repeat || Infinity);
-  if (duration === 0 || duration > clip.duration) duration = clip.duration;
-  if (time > duration) time = 0;
   action.clampWhenFinished = true;
-  action.time = time;
-  action.setDuration(clip.duration - action.time);
+  action.startAt(mixer.time + delay); // delay
+  action.setEffectiveTimeScale(time_scale || 1); // time scale
+  action.setLoop(THREE.LoopRepeat, _isInfinity ? 1 : repeat); // repeat
   action.play();
+
   playingAnimation = animation;
+  playingClip = subclip;
   playingAction = action;
   emitter.emit("started", playingAnimation);
 }
 
 // stop animation
 function stopAnimation() {
-  if (!playingAnimation) return;
-  const animation = playingAnimation;
-  playingAnimation = playingAction = null;
-  mixer.stopAllAction();
-  emitter.emit("stopped", animation);
+  mixer?.stopAllAction();
+  if (playingAnimation) {
+    const animation = playingAnimation;
+    playingAnimation = playingClip = playingAction = null;
+    emitter.emit("stopped", animation);
+  }
 }
 
 export default {
   emitter,
-  get isPlaying() {
-    return !!playingAnimation;
+  load,
+  getAnimationDuration(name) {
+    return animationsMap[name].duration;
   },
+  setMeshes,
   get modelBox() {
     return modelBox;
   },
   getAnimationStats() {
+    const { is_mirror } = playingAnimation.stats;
     const scale = Math.round((modelBox.scale.y / nScale) * 100) / 100;
     const x = Math.round(modelBox.position.x / nScale);
     const y = Math.round(modelBox.position.y / nScale);
@@ -179,19 +195,21 @@ export default {
     let rx = Math.round(modelBox.rotation.x * r2a);
     let ry = Math.round(modelBox.rotation.y * r2a);
     let rz = Math.round(modelBox.rotation.z * r2a);
-    return { scale, position: [x, y, z], rotation: [rx, ry, rz] };
+    return { is_mirror, scale, position: [x, y, z], rotation: [rx, ry, rz] };
   },
   setStats,
   setScale,
   get shadowY() {
     return shadow.position.y;
   },
-  load,
-  setMeshes,
+
   playAnimation,
   stopAnimation,
-  get isLoopRepeat() {
-    return playingAnimation.repeat === Infinity;
+  get isPlaying() {
+    return !!playingAnimation;
+  },
+  get isInfinity() {
+    return _isInfinity;
   },
   get isPaused() {
     return playingAction.paused;
@@ -200,9 +218,16 @@ export default {
     playingAction.paused = !playingAction.paused;
     return playingAction.paused;
   },
-  getTime() {
-    return { duration: playingAction._clip.duration, time: playingAction.time };
+  get duration() {
+    return playingClip?.duration || 0;
   },
+  get time() {
+    return playingAction?.time || 0;
+  },
+  get timeInfo() {
+    return { name: playingAnimation.name, duration: this.duration, time: this.time };
+  },
+
   update() {
     if (mixer) {
       const delta = clock.getDelta();

@@ -19,12 +19,12 @@ export default {
     wrapper.classList[data.fixed ? "add" : "remove"]("fixed");
     wrapper.classList.remove("hide");
   },
-  update({ max = 0, value = 0, text = "" }) {
+  update({ max = 0, value = 0, text = "", html = "" }) {
     progress.max = max;
     progress.value = value;
-    if (text) {
+    if (html || text) {
       progressText.classList.remove("hide");
-      progressText.textContent = text;
+      progressText.innerHTML = html || text;
       progressText.setAttribute("data-text", text);
     } else {
       progressText.classList.add("hide");

@@ -68,12 +68,12 @@ function setVoiceSelected(controller, selected) {
   controller.domElement.classList.toggle("selected", selected);
 }
 
-function setVoiceAddedCount(panel, voicePath, increase) {
+function setVoiceAddedCount(panel, resource, increase) {
   const map = panel === "Model" ? modelAddedMap : dataAddedMap;
-  if (!voicePath || !(voicePath in map)) return;
-  map[voicePath] += increase;
-  const count = map[voicePath];
-  const nameEl = voiceControllerMap[voicePath].domElement.querySelector(".name");
+  if (!resource || !(resource in map)) return;
+  map[resource] += increase;
+  const count = map[resource];
+  const nameEl = voiceControllerMap[resource].domElement.querySelector(".name");
   const className = panel === "Model" ? "data-added-left" : "data-added-right";
   if (count > 0) nameEl.setAttribute(className, count);
   else nameEl.removeAttribute(className);
@@ -91,9 +91,9 @@ function getVoiceFiles(dir, voices = []) {
   return voices;
 }
 
-function onVoiceStarted(voicePath) {
+function onVoiceStarted(resource) {
   onVoiceStopped();
-  activatedVoiceController = voiceControllerMap[voicePath];
+  activatedVoiceController = voiceControllerMap[resource];
   if (activatedVoiceController) activatedVoiceController.disable();
 }
 
@@ -115,8 +115,7 @@ export default {
       setVoices(voices);
     } else {
       // auto import voices in the same folder as model
-      const { resource } = modelData;
-      setVoices(getVoiceFiles(path.dirname(resource)));
+      setVoices(getVoiceFiles(path.dirname(modelData.resource)));
     }
   },
   getVoices() {
@@ -128,10 +127,10 @@ export default {
   },
   setVoiceAddedCount,
   setVoicesAddedCount(panel, voiceCountMap) {
-    Object.entries(voiceCountMap).forEach(([voicePath, count]) => {
+    Object.entries(voiceCountMap).forEach(([resource, count]) => {
       const map = panel === "Model" ? modelAddedMap : dataAddedMap;
-      map[voicePath] = count;
-      setVoiceAddedCount(panel, voicePath, 0);
+      map[resource] = count;
+      setVoiceAddedCount(panel, resource, 0);
     });
   },
   onVoiceStarted,

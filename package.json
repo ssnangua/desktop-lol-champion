@@ -1,6 +1,6 @@
 {
   "name": "desktop-lol-champion",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "description": "Desktop League of Legends Champion (with Editor)",
   "type": "module",
   "scripts": {

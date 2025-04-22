@@ -42,6 +42,15 @@
   top: 0;
   z-index: -1;
 }
+.progress-text .label {
+  font-weight: bold;
+}
+.progress-text .value {
+  color: #e6a23c;
+  & + .label {
+    margin-left: 10px;
+  }
+}
 .progress.hide {
   display: none;
 }

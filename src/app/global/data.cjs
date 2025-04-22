@@ -17,6 +17,34 @@ function getEmptyData(resource) {
   };
 }
 
+function getEmptyAnimation() {
+  return {
+    name,
+    meshes,
+    stats: {
+      is_mirror: false,
+      scale: 1,
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+    },
+    action: {
+      delay: 0,
+      start_time: 0,
+      end_time: 0,
+      time_scale: 1,
+      repeat: 1,
+    },
+    voice: {
+      resource: "",
+      delay: 0,
+      start_time: 0,
+      end_time: 0,
+      is_force: false,
+      is_repeat: false,
+    },
+  };
+}
+
 function relativeToAbsolute(obj, key) {
   if (obj[key]) obj[key] = path.resolve(obj[key]);
   return obj;
@@ -26,7 +54,10 @@ function readDataFile(dataFilePath) {
   try {
     let data = JSON.parse(fs.readFileSync(dataFilePath, "utf8"));
     if (data.resource && fs.existsSync(data.resource)) {
-      const anmVoice = (animation) => relativeToAbsolute(animation, "voice");
+      const anmVoice = (animation) => {
+        animation.voice = relativeToAbsolute(animation.voice, "resource");
+        return animation;
+      };
       data = {
         name: data.name,
         resource: path.resolve(data.resource),
@@ -51,7 +82,10 @@ function absoluteToRelative(obj, key) {
 
 function writeDataFile(dataFilePath, data) {
   try {
-    const anmVoice = (animation) => absoluteToRelative(animation, "voice");
+    const anmVoice = (animation) => {
+      animation.voice = absoluteToRelative(animation.voice, "resource");
+      return animation;
+    };
     data = {
       name: data.name,
       resource: path.relative("./", data.resource),
@@ -90,6 +124,7 @@ global.dataList = getDataList(dataDir);
 
 module.exports = {
   getEmptyData,
+  getEmptyAnimation,
   readDataFile,
   writeDataFile,
 };

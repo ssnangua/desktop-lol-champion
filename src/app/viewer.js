@@ -70,7 +70,7 @@ function playAnimation(animation) {
   curAnimation = animation;
 
   model.setMeshes(animation.meshes);
-  model.setStats(animation);
+  model.setStats(animation.stats);
   model.playAnimation(animation);
 }
 
@@ -78,10 +78,10 @@ function stopAnimation() {
   model.stopAnimation();
 }
 
-function playVoice(voicePath, delay, force, repeat) {
+function playVoice(voice) {
   if (global.settings.isMute) return;
-  if (isEnterAnimation || force || Math.random() <= global.settings.voice) {
-    audio.play(voicePath, delay, repeat);
+  if (isEnterAnimation || voice.is_force || Math.random() <= global.settings.voice) {
+    audio.play(voice);
   }
 }
 
@@ -92,15 +92,16 @@ function stopVoice() {
 function playAnimationWithVoice(animation) {
   playAnimation(animation);
 
-  const { voice, voice_delay, voice_force, voice_repeat } = animation;
-  if (!audio.isPlaying || voice_force) {
-    if (voice) {
-      if (!voice_force || voice !== audio.path) {
-        playVoice(voice, voice_delay, voice_force, voice_repeat);
+  const { resource, is_force } = animation.voice;
+  if (!audio.isPlaying || is_force) {
+    if (resource) {
+      if (!is_force || resource !== audio.resource) {
+        playVoice(animation.voice);
       }
     } else if (modelData.voices.length > 0) {
-      const voice = modelData.voices[Math.floor(Math.random() * modelData.voices.length)];
-      playVoice(voice, 0, false, false);
+      const index = Math.floor(Math.random() * modelData.voices.length);
+      const resource = modelData.voices[index];
+      playVoice({ resource, delay: 0, is_force: false, is_repeat: false });
     }
   }
 }
@@ -122,7 +123,6 @@ function randomGroup() {
 }
 
 model.emitter.on("finished", async () => {
-  await wait(curAnimation.pause * 1000);
   curAnimation = null;
 
   if (curAnimationGroupIndex < curAnimationGroup.length - 1) {

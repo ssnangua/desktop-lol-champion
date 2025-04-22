@@ -91,9 +91,8 @@ const stats = {
   RotationY: 0,
   RotationZ: 0,
   Reset() {
-    const stats = { mirror: false, scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] };
-    setStatsValue(stats);
-    emitter.emit("stats-changed", stats);
+    setStatsValue({});
+    emitter.emit("stats-changed", getStatsValue());
   },
 };
 const StatsFolder = Controls.addFolder("Animation Stats");
@@ -105,58 +104,71 @@ for (let property in stats) {
 
 function getStatsValue() {
   const { Mirror, Scale, X, Y, Z, RotationX, RotationY, RotationZ } = stats;
-  return { mirror: Mirror, scale: Scale, position: [X, Y, Z], rotation: [RotationX, RotationY, RotationZ] };
+  return {
+    is_mirror: Mirror,
+    scale: Scale,
+    position: [X, Y, Z],
+    rotation: [RotationX, RotationY, RotationZ],
+  };
 }
 
-function setStatsValue({ mirror, scale, position, rotation }) {
-  stats.Mirror = !!mirror;
+function setStatsValue({ is_mirror = false, scale = 1, position = [0, 0, 0], rotation = [0, 0, 0] }) {
+  stats.Mirror = is_mirror;
   stats.Scale = scale;
   [stats.X, stats.Y, stats.Z] = position;
   [stats.RotationX, stats.RotationY, stats.RotationZ] = rotation;
 }
 
 /**********************************************/
-/*          Other Animation Settings          */
+/*              Animation Action              */
 /**********************************************/
 
-const other = {
+const action = {
   "Repeat": 1,
-  "Time (s)": 0,
-  "Duration (s)": 0,
-  "Pause (s)": 0,
+  "Start Time (s)": 0,
+  "End Time (s)": 0,
+  "Time Scale": 1,
+  "Delay (s)": 0,
+  "Reset"() {
+    setActionValue({}, animationDuration);
+    emitter.emit("action-changed", getActionValue());
+  },
 };
-const otherFolder = Controls.addFolder("Other Animation Settings");
-const RepeatController = otherFolder.add(other, "Repeat", 1, 10, 1).listen().disable();
-const TimeController = otherFolder.add(other, "Time (s)", 0, 1, 0.001).listen().disable();
-const DurationController = otherFolder.add(other, "Duration (s)", 0, 1, 0.001).listen().disable();
-const PauseController = otherFolder.add(other, "Pause (s)", 0, 10, 0.001).listen().disable();
+const ActionFolder = Controls.addFolder("Animation Action");
+const ActionDelayCtrl = ActionFolder.add(action, "Delay (s)", 0, 10, 0.001).listen().disable();
+const ActionStartCtrl = ActionFolder.add(action, "Start Time (s)", 0, 1, 0.001).listen().disable();
+const ActionEndCtrl = ActionFolder.add(action, "End Time (s)", 0, 1, 0.001).listen().disable();
+const ActionScaleCtrl = ActionFolder.add(action, "Time Scale", 0, 10, 0.001).listen().disable();
+const ActionRepeatCtrl = ActionFolder.add(action, "Repeat", 1, 10, 1).listen().disable();
+const ActionResetCtrl = ActionFolder.add(action, "Reset").disable();
 
-function setOtherValue({ repeat, time, duration, pause }, anmDuration) {
-  if (anmDuration > 0) {
-    RepeatController.enable();
-    TimeController.max(anmDuration).enable();
-    DurationController.max(anmDuration).enable();
-    PauseController.enable();
-  } else {
-    RepeatController.disable();
-    TimeController.max(1).disable();
-    DurationController.max(1).disable();
-    PauseController.disable();
-  }
-  Object.assign(other, {
+const ActionCtrls = [ActionDelayCtrl, ActionStartCtrl, ActionEndCtrl, ActionScaleCtrl, ActionRepeatCtrl, ActionResetCtrl];
+
+let animationDuration;
+function setActionValue({ repeat = 1, delay = 0, start_time = 0, end_time = 0, time_scale = 1 }, duration = 0) {
+  animationDuration = duration;
+
+  const enabled = duration > 0 ? "enable" : "disable";
+  ActionCtrls.forEach((ctrl) => ctrl[enabled]());
+  ActionStartCtrl.max(duration || 1);
+  ActionEndCtrl.max(duration || 1);
+
+  Object.assign(action, {
+    "Delay (s)": delay,
+    "Start Time (s)": start_time,
+    "End Time (s)": end_time ? end_time : duration,
+    "Time Scale": time_scale,
     "Repeat": repeat,
-    "Time (s)": time,
-    "Duration (s)": duration ? duration : anmDuration,
-    "Pause (s)": pause,
   });
 }
 
-function getOtherValue() {
+function getActionValue() {
   return {
-    repeat: other.Repeat,
-    time: other["Time (s)"],
-    duration: other["Duration (s)"],
-    pause: other["Pause (s)"],
+    delay: action["Delay (s)"],
+    start_time: action["Start Time (s)"],
+    end_time: action["End Time (s)"],
+    time_scale: action["Time Scale"],
+    repeat: action["Repeat"],
   };
 }
 
@@ -165,41 +177,55 @@ function getOtherValue() {
 /**********************************************/
 
 const voice = {
-  "Path": "", // not show, just cache
-  "Voice": "",
+  "_Resource": "", // not show, just cache
+  "Resource": "",
   "Delay (s)": 0,
+  "Start Time (s)": 0,
+  "End Time (s)": 0,
   "Force": false,
   "Repeat": true,
   "Clear"() {
     emitter.emit("clear-voice", voice.Path);
-    setVoiceValue({ voice: "", voice_delay: 0, voice_force: false, voice_repeat: false });
+    setVoiceValue({}, 0);
   },
 };
 const VoiceFolder = Controls.addFolder("Animation Voice");
-const VoiceController = VoiceFolder.add(voice, "Voice").listen().disable();
-const DelayController = VoiceFolder.add(voice, "Delay (s)").listen().disable();
-const ForceController = VoiceFolder.add(voice, "Force").listen().disable();
-const VRepeatController = VoiceFolder.add(voice, "Repeat").listen().disable();
-const ClearVoiceController = VoiceFolder.add(voice, "Clear").disable();
+const VoiceResourceCtrl = VoiceFolder.add(voice, "Resource").listen().disable();
+const VoiceDelayCtrl = VoiceFolder.add(voice, "Delay (s)", 0, 10, 0.001).listen().disable();
+const VoiceStartCtrl = VoiceFolder.add(voice, "Start Time (s)", 0, 1, 0.001).listen().disable();
+const VoiceEndCtrl = VoiceFolder.add(voice, "End Time (s)", 0, 1, 0.001).listen().disable();
+const VoiceForceCtrl = VoiceFolder.add(voice, "Force").listen().disable();
+const VoiceRepeatCtrl = VoiceFolder.add(voice, "Repeat").listen().disable();
+const VoiceClearCtrl = VoiceFolder.add(voice, "Clear").disable();
 
-function setVoiceValue({ voice: voicePath, voice_delay, voice_force, voice_repeat }) {
+const VoiceCtrls = [VoiceDelayCtrl, VoiceStartCtrl, VoiceEndCtrl, VoiceForceCtrl, VoiceRepeatCtrl, VoiceClearCtrl];
+
+function setVoiceValue({ resource = "", delay = 0, start_time = 0, end_time = 0, is_force = false, is_repeat = false }, duration = 0) {
+  const enabled = resource ? "enable" : "disable";
+  VoiceCtrls.forEach((ctrl) => ctrl[enabled]());
+  VoiceStartCtrl.max(duration || 1);
+  VoiceEndCtrl.max(duration || 1);
+
   Object.assign(voice, {
-    "Path": voicePath,
-    "Voice": path.basename(voicePath),
-    "Delay (s)": voice_delay,
-    "Force": voice_force,
-    "Repeat": voice_repeat,
+    "_Resource": resource,
+    "Resource": path.basename(resource),
+    "Delay (s)": delay,
+    "Start Time (s)": start_time,
+    "End Time (s)": end_time ? end_time : duration,
+    "Force": is_force,
+    "Repeat": is_repeat,
   });
-
-  const enabled = voicePath ? "enable" : "disable";
-  DelayController[enabled]();
-  ForceController[enabled]();
-  VRepeatController[enabled]();
-  ClearVoiceController[enabled]();
 }
 
 function getVoiceValue() {
-  return { voice: voice.Path, voice_delay: voice["Delay (s)"], voice_force: voice.Force, voice_repeat: voice.Repeat };
+  return {
+    resource: voice["_Resource"],
+    delay: voice["Delay (s)"],
+    start_time: voice["Start Time (s)"],
+    end_time: voice["End Time (s)"],
+    is_force: voice["Force"],
+    is_repeat: voice["Repeat"],
+  };
 }
 
 /**********************************************/
@@ -212,7 +238,7 @@ Controls.onChange(({ object, property, value }) => {
   else if (object === transform) emitter.emit("value-changed", "TransformEnable", value);
   else if (object === meshes) emitter.emit("meshes-changed", getMeshesValue());
   else if (object === stats) emitter.emit("stats-changed", getStatsValue());
-  else if (object === other) emitter.emit("other-changed", getOtherValue());
+  else if (object === action) emitter.emit("action-changed", getActionValue());
   else if (object === voice) emitter.emit("voice-changed", getVoiceValue());
 });
 
@@ -249,24 +275,17 @@ function reset() {
 }
 
 function resetValues() {
-  // Stats
-  setStatsValue({ mirror: false, scale: 1, position: [0, 0, 0], rotation: [0, 0, 0] });
-  // Voice
-  setVoiceValue({ voice: "", voice_delay: 0, voice_force: false, voice_repeat: false });
-  // Other Settings
-  setOtherValue({ repeat: 1, time: 0, duration: 0, pause: 0 }, 0);
+  setStatsValue({});
+  setVoiceValue({}, 0);
+  setActionValue({}, 0);
 }
 
-function applyAnimationData(animation, anmDuration) {
+function applyAnimationData(animation, animationDuration, voiceDuration) {
   if (animation) {
-    const { meshes } = animation;
-    const { mirror, scale, position, rotation } = animation;
-    const { voice, voice_delay, voice_force, voice_repeat } = animation;
-    const { repeat, time, duration, pause } = animation;
-    setMeshesValue(meshes);
-    setStatsValue({ mirror, scale, position, rotation });
-    setVoiceValue({ voice, voice_delay, voice_force, voice_repeat });
-    setOtherValue({ repeat, time, duration, pause }, anmDuration);
+    setMeshesValue(animation.meshes);
+    setStatsValue(animation.stats);
+    setActionValue(animation.action, animationDuration);
+    setVoiceValue(animation.voice, voiceDuration);
   } else {
     resetValues();
   }
@@ -295,8 +314,8 @@ export default {
   setVoiceValue,
   getVoiceValue,
 
-  setOtherValue,
-  getOtherValue,
+  setActionValue,
+  getActionValue,
 
   applyAnimationData,
 };

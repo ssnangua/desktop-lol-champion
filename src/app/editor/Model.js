@@ -4,7 +4,7 @@ import { showOpenFilePicker } from "../utils/filePicker.js";
 
 const path = require("node:path");
 const fs = require("node:fs");
-const { getEmptyData, readDataFile } = require("./global/data.cjs");
+const { getEmptyData, getEmptyAnimation, readDataFile } = require("./global/data.cjs");
 
 const emitter = createEmitter();
 
@@ -44,34 +44,22 @@ Model.onChange(({ value }) => {
 
 // Animations
 let animations, AnimationFolder;
-let AnimationControllerMap, animationAddedMap;
-let selectedAnimation, selectedAnimationController;
-let activatedAnimationController;
+let AnmCtrlMap, anmAddedMap;
+let sAnm, sAnmCtrl; // selected
+let aAnmCtrl; // activated
 
 function setModel({ animations: modelAnimations, meshes }, dataAnimations) {
   if (AnimationFolder) AnimationFolder.destroy();
   AnimationFolder = Model.addFolder("Animations");
 
   const dataAnimationsMap = Object.fromEntries(dataAnimations.map((animation) => [animation.name, animation]));
-  animations = modelAnimations.map(({ name }) => {
+  animations = modelAnimations.map((name) => {
     if (name in dataAnimationsMap) return dataAnimationsMap[name];
-    return {
-      name,
-      meshes,
-      scale: 1,
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      repeat: 1,
-      time: 0,
-      duration: 0,
-      pause: 0,
-      voice: "",
-      voice_delay: 0,
-    };
+    return getEmptyAnimation();
   });
-  AnimationControllerMap = {};
-  animationAddedMap = {};
-  activatedAnimationController = null;
+  AnmCtrlMap = {};
+  anmAddedMap = {};
+  aAnmCtrl = null;
 
   animations.forEach((animation) => {
     const { name } = animation;
@@ -85,75 +73,75 @@ function setModel({ animations: modelAnimations, meshes }, dataAnimations) {
       name
     );
     controller.addButton("+", () => emitter.emit("add-animation", clone(animation)));
-    AnimationControllerMap[name] = controller;
-    animationAddedMap[name] = 0;
-    setAnimationHasVoiceStyle(controller, !!animation.voice);
-    setAnimationRepeatStyle(controller, animation.repeat);
+    AnmCtrlMap[name] = controller;
+    anmAddedMap[name] = 0;
+    setAnmHasVoiceStyle(controller, !!animation.voice.resource);
+    setAnmRepeatStyle(controller, animation.action.repeat);
   });
 }
 
 function setSelectedAnimation(animation) {
-  if (selectedAnimationController) selectedAnimationController.domElement.classList.remove("selected");
+  if (sAnmCtrl) sAnmCtrl.domElement.classList.remove("selected");
   if (!animation) {
-    selectedAnimation = selectedAnimationController = null;
+    sAnm = sAnmCtrl = null;
   } else {
-    selectedAnimation = animations.find(({ name }) => name === animation.name);
-    selectedAnimationController = AnimationControllerMap[animation.name];
-    selectedAnimationController.domElement.classList.add("selected");
+    sAnm = animations.find(({ name }) => name === animation.name);
+    sAnmCtrl = AnmCtrlMap[animation.name];
+    sAnmCtrl.domElement.classList.add("selected");
   }
 }
 
-function setAnimationHasVoiceStyle(controller, hasVoice) {
+function setAnmHasVoiceStyle(controller, hasVoice) {
   controller.domElement.classList.toggle("has-voice", hasVoice);
 }
-function setAnimationVoiceMissingStyle(controller, isMissing) {
+function setAnmVoiceMissingStyle(controller, isMissing) {
   controller.domElement.classList.toggle("voice-missing", isMissing);
 }
 
-function setAnimationRepeatStyle(controller, repeat) {
+function setAnmRepeatStyle(controller, repeat) {
   const nameEl = controller.domElement.querySelector(".name");
   if (repeat > 1) nameEl.setAttribute("data-repeat", repeat);
   else nameEl.removeAttribute("data-repeat");
 }
 
 function setAnimationAddedCount(name, increase) {
-  animationAddedMap[name] += increase;
-  const nameEl = AnimationControllerMap[name].domElement.querySelector(".name");
-  const added = animationAddedMap[name];
+  anmAddedMap[name] += increase;
+  const nameEl = AnmCtrlMap[name].domElement.querySelector(".name");
+  const added = anmAddedMap[name];
   if (added > 0) nameEl.setAttribute("data-added-right", added);
   else nameEl.removeAttribute("data-added-right");
 }
 
 function countAddedVoices(voices) {
-  const addedMap = {}; // { "voicePath": ["animationName"], ... }
-  const validAddedMap = {}; // { "voicePath": count, ... }
+  const addedMap = {}; // { "voiceResource": ["animationName"], ... }
+  const validAddedMap = {}; // { "voiceResource": count, ... }
   animations.forEach(({ name, voice }) => {
-    if (voice) {
-      addedMap[voice] ||= [];
-      addedMap[voice].push(name);
+    if (voice.resource) {
+      addedMap[voice.resource] ||= [];
+      addedMap[voice.resource].push(name);
     }
   });
-  Object.entries(addedMap).forEach(([voicePath, list]) => {
-    const isExists = voices.includes(voicePath);
+  Object.entries(addedMap).forEach(([voiceResource, list]) => {
+    const isExists = voices.includes(voiceResource);
     list.forEach((name) => {
-      const controller = AnimationControllerMap[name];
+      const controller = AnmCtrlMap[name];
       controller.domElement.classList.toggle("voice-missing", !isExists);
     });
-    if (isExists) validAddedMap[voicePath] = list.length;
+    if (isExists) validAddedMap[voiceResource] = list.length;
   });
   return validAddedMap;
 }
 
 function onAnimationStarted(animation) {
   onAnimationStopped();
-  activatedAnimationController = AnimationControllerMap[animation.name];
-  activatedAnimationController.disable();
+  aAnmCtrl = AnmCtrlMap[animation.name];
+  aAnmCtrl.disable();
 }
 
 function onAnimationStopped() {
-  if (activatedAnimationController) {
-    activatedAnimationController.enable();
-    activatedAnimationController = null;
+  if (aAnmCtrl) {
+    aAnmCtrl.enable();
+    aAnmCtrl = null;
   }
 }
 
@@ -166,20 +154,20 @@ export default {
   setModel,
   setSelectedAnimation,
   get selectedAnimation() {
-    return selectedAnimation;
+    return sAnm;
   },
   updateAnimationVoiceStyle() {
-    setAnimationHasVoiceStyle(selectedAnimationController, !!selectedAnimation.voice);
-    setAnimationVoiceMissingStyle(selectedAnimationController, false);
+    setAnmHasVoiceStyle(sAnmCtrl, !!sAnm.voice.resource);
+    setAnmVoiceMissingStyle(sAnmCtrl, false);
   },
   updateAnimationRepeatStyle() {
-    setAnimationRepeatStyle(selectedAnimationController, selectedAnimation.repeat);
+    setAnmRepeatStyle(sAnmCtrl, sAnm.action.repeat);
   },
   countAddedVoices,
   setAnimationAddedCount,
   setAnimationsAddedCount(animationCountMap) {
     Object.entries(animationCountMap).forEach(([name, count]) => {
-      animationAddedMap[name] = count;
+      anmAddedMap[name] = count;
       setAnimationAddedCount(name, 0);
     });
   },

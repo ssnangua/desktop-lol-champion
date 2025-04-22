@@ -1,6 +1,8 @@
 import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 import { createEmitter } from "../utils/utils.js";
 
+const path = require("node:path");
+
 const emitter = createEmitter();
 
 const Data = new GUI({ title: "Data" });
@@ -11,8 +13,9 @@ Data.domElement.style.cssText = "right: 246px; display: none;";
 /**********************************************/
 
 const root = {
-  "name": "",
-  "resource": "",
+  "Name": "",
+  "_Resource": "", // not show, just cache
+  "Resource": "",
   "Save Data"() {
     emitter.emit("save-data", {
       enter: groups[0],
@@ -21,8 +24,8 @@ const root = {
     });
   },
 };
-Data.add(root, "name").listen().disable();
-Data.add(root, "resource").listen().disable();
+Data.add(root, "Name").listen().disable();
+Data.add(root, "Resource").listen().disable();
 Data.add(root, "Save Data");
 
 /**********************************************/
@@ -46,7 +49,7 @@ const OperationsFolder = Data.addFolder("Operations");
 const NewGroupController = OperationsFolder.add(operations, "New Group");
 const DeleteGroupController = OperationsFolder.add(operations, "Delete Group").type("danger").disable();
 const PlayGroupController = OperationsFolder.add(operations, "Play Group").disable();
-function updateOperationsControllers() {
+function updateOperationsCtrls() {
   const [o, e, i] = [openedGroupFolder, enterGroupFolder, idleGroupFolder];
   const canDelete = o && o !== e && o !== i;
   const canPlay = o && o !== i && openedGroup.length > 0;
@@ -61,17 +64,18 @@ function updateOperationsControllers() {
 let groups, GroupsFolder;
 let enterGroupFolder, idleGroupFolder;
 let openedGroup, openedGroupFolder;
-let selectedAnimation, selectedAnimationController;
-let activatedAnimationController;
+let sAnm, sAnmCtrl; // selected
+let aAnmCtrl; // activated
 
 function setModelData(modelData) {
   groups = [];
   enterGroupFolder = idleGroupFolder = null;
   openedGroup = openedGroupFolder = null;
-  selectedAnimation = selectedAnimationController = null;
-  activatedAnimationController = null;
+  sAnm = sAnmCtrl = null;
+  aAnmCtrl = null;
   // model name and path
-  Object.assign(root, { name: modelData.name, resource: modelData.resource });
+  const { name, resource } = modelData;
+  Object.assign(root, { Name: name, _Resource: resource, Resource: path.basename(resource) });
   // animation group folders
   if (GroupsFolder) GroupsFolder.destroy();
   GroupsFolder = Data.addFolder("Animation Groups", true);
@@ -79,7 +83,7 @@ function setModelData(modelData) {
     const index = GroupsFolder.folders.indexOf(folder);
     openedGroup = groups[index];
     openedGroupFolder = folder;
-    updateOperationsControllers();
+    updateOperationsCtrls();
   });
   newGroup(modelData.enter);
   newGroup(modelData.idle);
@@ -95,7 +99,7 @@ function setModelData(modelData) {
     type: "idle",
     tips: "These animations are most often played",
   });
-  updateOperationsControllers();
+  updateOperationsCtrls();
 }
 
 function inbuildGroup(folder, { title, type, tips }) {
@@ -115,13 +119,13 @@ function newGroup(group) {
   openedGroupFolder = GroupsFolder.addFolder(`Group ${groups.length - 2} (${group.length})`);
   openedGroupFolder.domElement.classList.add("animation-group");
   group.forEach(addAnimation);
-  updateOperationsControllers();
+  updateOperationsCtrls();
 }
 
 function deleteGroup() {
   openedGroup.forEach((animation) => {
-    if (animation === selectedAnimation) {
-      selectedAnimation = selectedAnimationController = null;
+    if (animation === sAnm) {
+      sAnm = sAnmCtrl = null;
     }
     emitter.emit("delete-animation", animation);
   });
@@ -139,7 +143,7 @@ function deleteGroup() {
   } else {
     openedGroup = openedGroupFolder = null;
   }
-  updateOperationsControllers();
+  updateOperationsCtrls();
 }
 
 function updateGroupFolderTitle(folder) {
@@ -184,23 +188,23 @@ function addAnimation(animation) {
   });
 
   controller.addButton("-", () => {
-    if (animation === selectedAnimation) {
-      selectedAnimation = selectedAnimationController = null;
+    if (animation === sAnm) {
+      sAnm = sAnmCtrl = null;
     }
     const index = openedGroup.indexOf(animation);
     openedGroup.splice(index, 1);
     openedGroupFolder.controllers[index].destroy();
     updateMoveButtons();
     updateGroupFolderTitle(openedGroupFolder); // children count
-    updateOperationsControllers(); // playable
+    updateOperationsCtrls(); // playable
     emitter.emit("delete-animation", animation);
   });
 
-  setAnimationHasVoiceStyle(controller, !!animation.voice);
-  setAnimationRepeatStyle(controller, animation.repeat);
+  setAnmHasVoiceStyle(controller, !!animation.voice.resource);
+  setAnmRepeatStyle(controller, animation.action.repeat);
   updateMoveButtons();
   updateGroupFolderTitle(openedGroupFolder);
-  updateOperationsControllers();
+  updateOperationsCtrls();
   return animation;
 }
 
@@ -226,25 +230,25 @@ function swapAnimations(animation, direction) {
 }
 
 function setSelectedAnimation(animation) {
-  if (selectedAnimationController) selectedAnimationController.domElement.classList.remove("selected");
+  if (sAnmCtrl) sAnmCtrl.domElement.classList.remove("selected");
   if (!animation) {
-    selectedAnimation = selectedAnimationController = null;
+    sAnm = sAnmCtrl = null;
   } else {
     const index = openedGroup.findIndex((item) => item === animation);
-    selectedAnimation = openedGroup[index];
-    selectedAnimationController = openedGroupFolder.controllers[index];
-    selectedAnimationController.domElement.classList.add("selected");
+    sAnm = openedGroup[index];
+    sAnmCtrl = openedGroupFolder.controllers[index];
+    sAnmCtrl.domElement.classList.add("selected");
   }
 }
 
-function setAnimationHasVoiceStyle(controller, hasVoice) {
+function setAnmHasVoiceStyle(controller, hasVoice) {
   controller.domElement.classList.toggle("has-voice", hasVoice);
 }
-function setAnimationVoiceMissingStyle(controller, isMissing) {
+function setAnmVoiceMissingStyle(controller, isMissing) {
   controller.domElement.classList.toggle("voice-missing", isMissing);
 }
 
-function setAnimationRepeatStyle(controller, repeat) {
+function setAnmRepeatStyle(controller, repeat) {
   const nameEl = controller.domElement.querySelector(".name");
   if (repeat > 1) nameEl.setAttribute("data-repeat", repeat);
   else nameEl.removeAttribute("data-repeat");
@@ -261,24 +265,24 @@ function countAddedAnimations() {
 }
 
 function countAddedVoices(voices) {
-  const addedMap = {}; // { "voicePath": [[groupIndex, animationIndex], ...], ... }
-  const validAddedMap = {}; // { "voicePath": count, ... }
+  const addedMap = {}; // { "voiceResource": [[groupIndex, animationIndex], ...], ... }
+  const validAddedMap = {}; // { "voiceResource": count, ... }
   groups.forEach((group, groupIndex) => {
     group.forEach(({ voice }, animationIndex) => {
-      if (voice) {
-        addedMap[voice] ||= [];
-        addedMap[voice].push([groupIndex, animationIndex]);
+      if (voice.resource) {
+        addedMap[voice.resource] ||= [];
+        addedMap[voice.resource].push([groupIndex, animationIndex]);
       }
     });
   });
-  Object.entries(addedMap).forEach(([voicePath, list]) => {
-    const isExists = voices.includes(voicePath);
+  Object.entries(addedMap).forEach(([voiceResource, list]) => {
+    const isExists = voices.includes(voiceResource);
     list.forEach(([groupIndex, animationIndex]) => {
       const folder = GroupsFolder.folders[groupIndex];
       const controller = folder.controllers[animationIndex];
       controller.domElement.classList.toggle("voice-missing", !isExists);
     });
-    if (isExists) validAddedMap[voicePath] = list.length;
+    if (isExists) validAddedMap[voiceResource] = list.length;
   });
   return validAddedMap;
 }
@@ -288,17 +292,17 @@ function onAnimationStarted(animation) {
   onAnimationStopped();
   const index = openedGroup.indexOf(animation);
   if (index !== -1) {
-    activatedAnimationController = openedGroupFolder.controllers[index];
-    activatedAnimationController.disable();
+    aAnmCtrl = openedGroupFolder.controllers[index];
+    aAnmCtrl.disable();
   } else {
     highlightGroup(animation);
   }
 }
 
 function onAnimationStopped() {
-  if (activatedAnimationController) {
-    activatedAnimationController.enable();
-    activatedAnimationController = null;
+  if (aAnmCtrl) {
+    aAnmCtrl.enable();
+    aAnmCtrl = null;
   } else {
     highlightGroup(null);
   }
@@ -310,28 +314,28 @@ export default {
     Data.domElement.style.display = "";
   },
   setModelData,
-  getAnimationMap() {
-    const animationMap = {};
+  getAnimationsMap() {
+    const animationsMap = {};
     groups.forEach((group) => {
       group.forEach((animation) => {
-        animationMap[animation.name] = animation;
+        animationsMap[animation.name] = animation;
       });
     });
-    return animationMap;
+    return animationsMap;
   },
   addAnimation,
   setSelectedAnimation,
   countAddedAnimations,
   countAddedVoices,
   get selectedAnimation() {
-    return selectedAnimation;
+    return sAnm;
   },
   updateAnimationVoiceStyle() {
-    setAnimationHasVoiceStyle(selectedAnimationController, !!selectedAnimation.voice);
-    setAnimationVoiceMissingStyle(selectedAnimationController, false);
+    setAnmHasVoiceStyle(sAnmCtrl, !!sAnm.voice.resource);
+    setAnmVoiceMissingStyle(sAnmCtrl, false);
   },
   updateAnimationRepeatStyle() {
-    setAnimationRepeatStyle(selectedAnimationController, selectedAnimation.repeat);
+    setAnmRepeatStyle(sAnmCtrl, sAnm.action.repeat);
   },
   onAnimationStarted,
   onAnimationStopped,
