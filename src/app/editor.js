@@ -186,6 +186,7 @@ controls.transformControls.attach(model.modelBox);
 controls.emitter.on("transform", () => {
   const stats = model.getAnimationStats();
   model.setScale(stats.scale); // equal scaling
+  model.setStats(stats);
   helper.gridY = model.shadowY;
   gui.Controls.setStatsValue(stats);
 });

@@ -186,7 +186,7 @@ export default {
     return modelBox;
   },
   getAnimationStats() {
-    const { is_mirror } = playingAnimation.stats;
+    const is_mirror = playingAnimation?.stats.is_mirror || false;
     const scale = Math.round((modelBox.scale.y / nScale) * 100) / 100;
     const x = Math.round(modelBox.position.x / nScale);
     const y = Math.round(modelBox.position.y / nScale);
