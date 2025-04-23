@@ -51,6 +51,7 @@ let aAnmCtrl; // activated
 function setModel({ animations: modelAnimations, meshes }, dataAnimations) {
   if (AnimationFolder) AnimationFolder.destroy();
   AnimationFolder = Model.addFolder("Animations");
+  AnimationFolder.$children.classList.add("model-animations");
 
   const dataAnimationsMap = Object.fromEntries(dataAnimations.map((animation) => [animation.name, animation]));
   animations = modelAnimations.map((name) => {

@@ -32,7 +32,10 @@ function setVoices(files) {
   selectedVoice = selectedVoiceController = activatedVoiceController = null;
 
   voices = files.map((file) => file.path);
+
   VoicesFolder = Voices.addFolder("Resources");
+  VoicesFolder.$children.classList.add("voice-resources");
+
   voiceControllerMap = {};
   modelAddedMap = {};
   dataAddedMap = {};

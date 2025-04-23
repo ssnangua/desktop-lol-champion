@@ -46,6 +46,7 @@ const operations = {
   },
 };
 const OperationsFolder = Data.addFolder("Operations");
+OperationsFolder.$title.classList.add("data-operations-title");
 const NewGroupController = OperationsFolder.add(operations, "New Group");
 const DeleteGroupController = OperationsFolder.add(operations, "Delete Group").type("danger").disable();
 const PlayGroupController = OperationsFolder.add(operations, "Play Group").disable();
@@ -79,6 +80,7 @@ function setModelData(modelData) {
   // animation group folders
   if (GroupsFolder) GroupsFolder.destroy();
   GroupsFolder = Data.addFolder("Animation Groups", true);
+  GroupsFolder.$children.classList.add("data-groups");
   GroupsFolder.onAccordion((folder) => {
     const index = GroupsFolder.folders.indexOf(folder);
     openedGroup = groups[index];

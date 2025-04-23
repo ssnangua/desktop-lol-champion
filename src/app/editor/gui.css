@@ -120,3 +120,35 @@
   position: absolute;
   right: 5px;
 }
+
+.model-animations,
+.voice-resources,
+.data-groups {
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    background: var(--background-color);
+    height: var(--scrollbar-width);
+    width: var(--scrollbar-width);
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--focus-color);
+    border-radius: var(--scrollbar-width);
+  }
+}
+.model-animations {
+  max-height: calc(100vh - 102px);
+}
+.voice-resources {
+  max-height: calc(100vh - 78px);
+}
+.data-groups {
+  max-height: calc(100vh - 227px);
+}
+
+.data-operations-title {
+  pointer-events: none;
+  &:before {
+    content: "" !important;
+  }
+}
